@@ -1,84 +1,110 @@
 import requests
+from requests import RequestException
 from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime
 import os
+import re
 
 
-def collect_data(output_directory='data', output_filename='data.csv'):
-    cwd = os.getcwd()
-    os.makedirs(output_directory, exist_ok=True)
-    csv_files = [file for file in os.listdir(cwd) if file.endswith('.csv')]
-    combined_df = pd.DataFrame()
-    for csv_file in csv_files:
-        file_path = os.path.join(cwd, csv_file)
-        df = pd.read_csv(file_path)
-        combined_df = pd.concat([combined_df, df], ignore_index=True)
+def get_from_to(date_from, date_to, code):
+    url = f"https://www.mse.mk/mk/stats/symbolhistory/{code}"
 
-    output_path = os.path.join(output_directory, output_filename)
-    combined_df.to_csv(output_path, index=False)
-    for file in csv_files:
-        os.remove(os.path.join(cwd, file))
-    print(f"Combined data saved to {output_path}")
+    payload = f"FromDate={date_from}&ToDate={date_to}&Code={code}"
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    response = None
+    try:
+        response = requests.post(url, data=payload, headers=headers)
+        response.raise_for_status()
+    except RequestException as e:
+        print(f"An error occurred: {e}")
+    if response is None:
+        return None
+    if response.status_code != 200:
+        print("Bad response code")
+        return None
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    table = soup.find("table", id="resultsTable")
+
+    if table is None:
+        return None
+
+    rows_data = []
+    header_row = table.find("tr")
+    headers = [th.text.strip() for th in header_row.find_all("th")]
+
+    for row in table.find_all("tr")[1:]:
+        row_data = [td.text.strip() for td in row.find_all("td")]
+        rows_data.append(row_data)
+
+    return pd.DataFrame(rows_data, columns=headers)
 
 
-def one_year_before(input_date):
+def one_year_before(date):
     date_format = "%d.%m.%Y"
-    given_date = datetime.strptime(input_date, date_format)
+    given_date = datetime.strptime(date, date_format)
     one_year_ago = given_date.replace(year=given_date.year - 1)
     return one_year_ago.strftime(date_format)
 
 
-def get_from_to(date_from, date_to):
-    url = "https://www.mse.mk/mk/stats/symbolhistory/REPL"
-
-    payload = f"FromDate={date_from}&ToDate={date_to}&Code=REPL"
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-
-    response = requests.post(url, data=payload, headers=headers)
-
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        table = soup.find("table", id="resultsTable")
-
-        rows_data = []
-        headers = []
-
-        if table:
-            header_row = table.find("tr")
-            headers = [th.text.strip() for th in header_row.find_all("th")]
-
-            # Extract each row's data
-            for row in table.find_all("tr")[1:]:  # Skip header row
-                row_data = [td.text.strip() for td in row.find_all("td")]
-                rows_data.append(row_data)
-
-            row_count = len(rows_data)
-            print(f"Number of data rows: {row_count}")
-
-            df = pd.DataFrame(rows_data, columns=headers)
-            df.to_csv(f"{date_from}-{date_to}.csv", index=False)
-            print("Data saved to resultsTable.csv")
-        else:
-            print("Table with id 'resultsTable' not found.")
-    else:
-        print("Failed to retrieve the data. Status code:", response.status_code)
-
-
-def scrape_data():
-    date_to = datetime.now().strftime("%d.%m.%Y")
+def get_data_for(code):
+    data_frame_list = []
+    date_today = datetime.now().strftime("%d.%m.%Y")
+    date_to = date_today
     date_from = one_year_before(date_to)
-    get_from_to(date_from, date_to)
     for i in range(10):
-        get_from_to(date_from, date_to)
+        df = get_from_to(date_from, date_to, code)
+        if df is None:
+            continue
+        data_frame_list.append(df)
         date_to = date_from
         date_from = one_year_before(date_to)
+    return data_frame_list
+
+
+def scrape_data(codes):
+    output_dir = os.path.join(os.getcwd(), 'data')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    for code in codes:
+        df_list = get_data_for(code)
+        result = df_list[0]
+        for i in range(1, len(df_list)):
+            result = pd.concat([result, df_list[i]], ignore_index=True)
+        full_path = os.path.join(output_dir, f'{code}.csv')
+        result.to_csv(full_path, index=False)
+
+
+def get_codes():
+    url = "https://www.mse.mk/mk/stats/symbolhistory/ADIN"
+    response = requests.get(url)
+    if response.status_code != 200:
+        print("Bad response code")
+        return None
+    soup = BeautifulSoup(response.text, "html.parser")
+    select_tag = soup.find('select', id='Code')
+    codes = []
+    for option in select_tag.find_all('option'):
+        if 'value' in option.attrs:
+            codes.append(option['value'])
+
+    codes_without_digits = []
+    for s in codes:
+        if not re.search(r'\d', s):
+            codes_without_digits.append(s)
+
+    bonds = ["TTK", "TTKO", "CKB", "CKBKO", "SNBT", "SNBTO"]
+    filtered_codes = []
+    for item in codes_without_digits:
+        if item not in bonds:
+            filtered_codes.append(item)
+    return filtered_codes
 
 
 def main():
-    scrape_data()
-    collect_data()
+    codes = get_codes()
+    scrape_data(codes)
 
 
 if __name__ == "__main__":
