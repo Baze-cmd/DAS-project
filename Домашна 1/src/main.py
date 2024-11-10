@@ -41,6 +41,9 @@ def get_latest_date(codes, db_file_path):
     result = {}
     current_date = datetime.now()
 
+    if not os.path.exists(db_file_path):
+        open(db_file_path, 'w').close()
+
     try:
         conn = sqlite3.connect(db_file_path)
         cursor = conn.cursor()
