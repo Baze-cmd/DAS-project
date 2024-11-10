@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import os
 import re
 from tqdm import tqdm
+import sqlite3
 
 
 # gets the code of all valid publishers and returns them as a list of strings
@@ -35,26 +36,38 @@ def get_codes():
     return filtered_codes
 
 
-# checks the last retrieved date in CSV files for each publisher and returns a map where key is the code and value is latest date
-def get_latest_date(codes):
+# checks the db and retrives the latest date for each publisher and returns a map where key is the code and value is latest date
+def get_latest_date(codes, db_file_path):
     result = {}
-    path = os.path.join(os.getcwd(), "data")
 
+    conn = sqlite3.connect(db_file_path)
+    cursor = conn.cursor()
+    current_date = datetime.now()
     for code in codes:
-        file_path = os.path.join(path, f"{code}.csv")
-        if not os.path.exists(file_path):
+        result[code] = None
+
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (code,))
+            table_exists = cursor.fetchone()
+
+            if not table_exists:
+                result[code] = None
+                continue
+            cursor.execute(f"SELECT Date FROM {code}")
+            dates = [row[0] for row in cursor.fetchall()]
+            if len(dates) == 0:
+                result[code] = None
+                continue
+
+            date_objects = [datetime.strptime(date_str, "%d.%m.%Y") for date_str in dates]
+            most_recent_date = max((date for date in date_objects if date <= current_date), default=None)
+            result[code] = most_recent_date.strftime("%d.%m.%Y")
+
+        except sqlite3.Error:
             result[code] = None
-            continue
 
-        df = pd.read_csv(file_path)
+    conn.close()
 
-        if df.empty:
-            result[code] = None
-            continue
-
-        df['Date'] = pd.to_datetime(df['Date'], format='%d.%m.%Y', errors='coerce')
-        latest_date = df['Date'].max()
-        result[code] = latest_date.strftime('%d.%m.%Y')
     return result
 
 
@@ -73,7 +86,6 @@ def get_from_to(code, date_from, date_to):
     if response is None:
         return None
     if response.status_code != 200:
-        print("Bad response code")
         return None
     soup = BeautifulSoup(response.text, "html.parser")
 
@@ -163,27 +175,55 @@ def scrape_data(last_date_map):
     return data
 
 
-# saves csv files in folder called data
-def save(data):
-    output_dir = os.path.join(os.getcwd(), 'data')
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+# saves data to database with that path
+def save(data, db_file_path):
+    conn = sqlite3.connect(db_file_path)
+    cursor = conn.cursor()
+
     for code, df in data.items():
         if df is None:
             continue
-        full_path = os.path.join(output_dir, f'{code}.csv')
+        field_names = []
+        for col in df.columns:
+            field_names.append(col.replace(' ', '_').replace(',', '').replace('.', '').replace('%', ''))
 
-        if not os.path.isfile(full_path):
-            df.to_csv(full_path, mode='w', index=False, header=True)
-        else:
-            df.to_csv(full_path, mode='a', index=False, header=False)
+        column_definitions = []
+        for col in field_names:
+            if col == 'Date':
+                column_definitions.append(f"{col} TEXT")
+                continue
+            column_definitions.append(f"{col} REAL")
+
+        create_table_sql = f"CREATE TABLE IF NOT EXISTS {code} ({', '.join(column_definitions)});"
+        cursor.execute(create_table_sql)
+
+        for index, row in df.iterrows():
+            values = [row['Date']]
+
+            values[0] = f"'{values[0]}'"
+
+            for col in df.columns:
+                if col != 'Date':
+                    cleaned_value = str(row[col]).replace(',', '')
+                    numeric_value = pd.to_numeric(cleaned_value, errors='coerce')
+                    values.append(numeric_value)
+
+            insert_sql = f"INSERT INTO {code} ({', '.join(field_names)}) VALUES ({', '.join(map(str, values))})"
+            cursor.execute(insert_sql)
+
+    conn.commit()
+    conn.close()
 
 
 def main():
+    output_dir = os.path.join(os.getcwd(), 'data')
+    file_name = 'database.sqlite'
+    db_file_path = os.path.join(output_dir, file_name)
+
     codes = get_codes()
-    latest_date_map = get_latest_date(codes)
+    latest_date_map = get_latest_date(codes, db_file_path)
     data = scrape_data(latest_date_map)
-    save(data)
+    save(data, db_file_path)
 
 
 if __name__ == "__main__":
