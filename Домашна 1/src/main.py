@@ -39,34 +39,43 @@ def get_codes():
 # checks the db and retrives the latest date for each publisher and returns a map where key is the code and value is latest date
 def get_latest_date(codes, db_file_path):
     result = {}
-
-    conn = sqlite3.connect(db_file_path)
-    cursor = conn.cursor()
     current_date = datetime.now()
-    for code in codes:
-        result[code] = None
 
-        try:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (code,))
-            table_exists = cursor.fetchone()
+    try:
+        conn = sqlite3.connect(db_file_path)
+        cursor = conn.cursor()
 
-            if not table_exists:
-                result[code] = None
-                continue
-            cursor.execute(f"SELECT Date FROM {code}")
-            dates = [row[0] for row in cursor.fetchall()]
-            if len(dates) == 0:
-                result[code] = None
-                continue
-
-            date_objects = [datetime.strptime(date_str, "%d.%m.%Y") for date_str in dates]
-            most_recent_date = max((date for date in date_objects if date <= current_date), default=None)
-            result[code] = most_recent_date.strftime("%d.%m.%Y")
-
-        except sqlite3.Error:
+        for code in codes:
             result[code] = None
 
-    conn.close()
+            try:
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (code,))
+                table_exists = cursor.fetchone()
+
+                if not table_exists:
+                    cursor.execute(f"CREATE TABLE IF NOT EXISTS {code} (Date TEXT)")
+                    conn.commit()
+                    result[code] = None
+                    continue
+
+                cursor.execute(f"SELECT Date FROM {code}")
+                dates = [row[0] for row in cursor.fetchall()]
+                if len(dates) == 0:
+                    result[code] = None
+                    continue
+
+                date_objects = [datetime.strptime(date_str, "%d.%m.%Y") for date_str in dates]
+                most_recent_date = max((date for date in date_objects if date <= current_date), default=None)
+                result[code] = most_recent_date.strftime("%d.%m.%Y") if most_recent_date else None
+
+            except sqlite3.Error:
+                result[code] = None
+
+    except sqlite3.OperationalError as e:
+        print(f"Database error: {e}")
+    finally:
+        if 'conn' in locals():
+            conn.close()
 
     return result
 
