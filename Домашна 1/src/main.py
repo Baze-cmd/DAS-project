@@ -153,10 +153,13 @@ def scrape_data(last_date_map):
         result = df_list[0]
         for i in range(1, len(df_list)):
             result = pd.concat([result, df_list[i]], ignore_index=True)
-        result['Date'] = pd.to_datetime(result['Date'], format='%m/%d/%Y')
-        result['Date'] = result['Date'].dt.strftime('%d.%m.%Y')
-        data[code] = result
+        result = result[result["Total turnover in denars"] != "0"]
 
+        date = pd.to_datetime(result['Date'])
+        result.loc[:, 'Date'] = date.dt.strftime('%d.%m.%Y')
+
+        result = result.replace('', '0')
+        data[code] = result
     return data
 
 
@@ -166,10 +169,14 @@ def save(data):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for code, df in data.items():
-        if data[code] is None:
+        if df is None:
             continue
         full_path = os.path.join(output_dir, f'{code}.csv')
-        df.to_csv(full_path, mode='a', index=False, header=False)
+
+        if not os.path.isfile(full_path):
+            df.to_csv(full_path, mode='w', index=False, header=True)
+        else:
+            df.to_csv(full_path, mode='a', index=False, header=False)
 
 
 def main():
