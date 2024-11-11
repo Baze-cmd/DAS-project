@@ -1,8 +1,8 @@
 ## Setup
 ```sh
 git clone https://github.com/Baze-cmd/DAS-project.git
-cd DAS-project/"Домашна 1"/src
-pip install -r requirements.txt
+pip install -r DAS-project/requirements.txt
+cd "Домашна 1"/src
 ```
 ## Running
 ```sh
