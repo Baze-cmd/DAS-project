@@ -233,6 +233,7 @@ def main():
     latest_date_map = get_latest_date(codes, db_file_path)
     data = scrape_data(latest_date_map)
     save(data, db_file_path)
+    print(f"Data saved at:{db_file_path}")
 
 
 if __name__ == "__main__":
