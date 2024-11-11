@@ -6,5 +6,5 @@ pip install -r requirements.txt
 ```
 ## Running
 ```sh
-python "Домашна 1"/src/main.py
+python main.py
 ```
