@@ -13,7 +13,7 @@ const Navbar = () => {
                 <div>
                     <Link to="/about" className="btn btn-success m-2">About</Link>
                     <Link to="/contact" className="btn btn-success m-2">Contact</Link>
-                    <Link to="/login" className="btn btn-success m-2">Login</Link>
+                    <Link to="/Login" className="btn btn-success m-2">Login</Link>
                 </div>
             </div>
         </header>
