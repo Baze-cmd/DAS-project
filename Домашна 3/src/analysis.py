@@ -2,7 +2,6 @@ import pandas as pd
 import ta
 import os
 import sqlite3
-import matplotlib.pyplot as plt
 
 
 def get_data_for(name):
