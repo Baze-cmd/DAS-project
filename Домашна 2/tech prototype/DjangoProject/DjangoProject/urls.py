@@ -24,6 +24,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('homepage/', views.homepage, name='homepage'),
     path('search/', views.search, name='search'),
-    path('stock_detail/<str:name>/', views.stock_detail, name='stock_detail'),
+    path('stock_data/<str:name>/', views.stock_data, name='stock_data'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

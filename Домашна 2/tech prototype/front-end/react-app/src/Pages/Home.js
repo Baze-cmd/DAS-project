@@ -29,7 +29,7 @@ const Home = () => {
     };
 
     const redirectStockDetails = (stockName) => {
-        navigate(`/stock/${stockName}`);
+        navigate(`/stock_data/${stockName}`);
     };
 
     return (
