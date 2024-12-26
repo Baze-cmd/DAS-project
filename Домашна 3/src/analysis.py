@@ -23,51 +23,71 @@ def get_data_for(name):
 
 
 def RSI(df):
+    if len(df) < 14:
+        return None
     indicator = ta.momentum.RSIIndicator(close=df['Last_trade_price'], fillna=True)
     return round(indicator.rsi().iloc[-1], 2)
 
 
 def StochasticRSI(df):
+    if len(df) < 14:
+        return None
     indicator = ta.momentum.StochRSIIndicator(close=df['Last_trade_price'], fillna=True)
     return round(indicator.stochrsi_d().iloc[-1], 2)
 
 
 def CII(df):
+    if len(df) < 20:
+        return None
     indicator = ta.trend.CCIIndicator(close=df['Last_trade_price'], high=df['Max'], low=df['Min'], fillna=True)
     return round(indicator.cci().iloc[-1], 2)
 
 
 def awesome(df):
+    if len(df) < 34:
+        return None
     indicator = ta.momentum.AwesomeOscillatorIndicator(high=df['Max'], low=df['Min'], fillna=True)
     return round(indicator.awesome_oscillator().iloc[-1], 2)
 
 
 def SMA(df):
+    if len(df) < 4:
+        return None
     indicator = ta.trend.SMAIndicator(close=df['Last_trade_price'], window=2, fillna=True)
     return round(indicator.sma_indicator().iloc[-1], 2)
 
 
 def EMA(df):
+    if len(df) < 14:
+        return None
     indicator = ta.trend.EMAIndicator(close=df['Last_trade_price'], fillna=True)
     return round(indicator.ema_indicator().iloc[-1], 2)
 
 
 def Ichimoku(df):
+    if len(df) < 52:
+        return None
     indicator = ta.trend.IchimokuIndicator(high=df['Max'], low=df['Min'], fillna=True)
     return round(indicator.ichimoku_conversion_line().iloc[-1], 2)
 
 
 def Trix(df):
+    if len(df) < 15:
+        return None
     indicator = ta.trend.TRIXIndicator(close=df['Last_trade_price'], fillna=True)
     return round(indicator.trix().iloc[-1], 2)
 
 
 def KAMA(df):
+    if len(df) < 40:
+        return None
     indicator = ta.momentum.KAMAIndicator(close=df['Last_trade_price'], fillna=True)
     return round(indicator.kama().iloc[-1], 2)
 
 
 def WMA(df):
+    if len(df) < 9:
+        return None
     indicator = ta.trend.WMAIndicator(close=df['Last_trade_price'], fillna=True)
     return round(indicator.wma().iloc[-1], 2)
 
@@ -87,10 +107,12 @@ def calc_indicators(data):
     moving_averages['Weighted Moving Average'] = WMA(data)
     return {'Oscillators': oscillators, 'Moving averages': moving_averages}
 
+
 def main():
     name = 'ADIN'
     indicators = calc_indicators(get_data_for(name))
     print(indicators)
 
 
-main()
+if __name__ == "__main__":
+    main()
