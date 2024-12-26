@@ -6,9 +6,7 @@ import sqlite3
 
 def get_data_for(name):
     db_path = os.getcwd()
-    db_path = os.path.abspath(os.path.join(db_path, '..'))
-    db_path = os.path.abspath(os.path.join(db_path, '..'))
-    db_path = os.path.join(db_path, 'Домашна 1\\src\\data\\database.sqlite')
+    db_path = os.path.join(db_path, 'database.sqlite')
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -19,6 +17,8 @@ def get_data_for(name):
     df = pd.DataFrame(rows, columns=column_names)
     # reverse the order of the data
     df = df.iloc[::-1].reset_index(drop=True)
+    # Convert the 'Date' column to datetime type
+    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True)  # day-first format
     return df
 
 
@@ -108,11 +108,55 @@ def calc_indicators(data):
     return {'Oscillators': oscillators, 'Moving averages': moving_averages}
 
 
+# Add filter_data_by_timeframe function here
+def filter_data_by_timeframe(df, timeframe):
+    if timeframe == 'daily':
+        return df
+    elif timeframe == 'weekly':
+        df['Date'] = pd.to_datetime(df['Date'])
+        df.set_index('Date', inplace=True)  # Set 'Date' as the index for resampling
+        return df.resample('W').mean().reset_index()  # Resample weekly
+    elif timeframe == 'monthly':
+        df['Date'] = pd.to_datetime(df['Date'])
+        df.set_index('Date', inplace=True)  # Set 'Date' as the index for resampling
+        return df.resample('M').mean().reset_index()  # Resample monthly
+    else:
+        raise ValueError("Invalid timeframe. Use 'daily', 'weekly', or 'monthly'.")
+
+
+# Add generate_signals function here
+def generate_signals(oscillators, moving_averages):
+    signals = []
+    # logic for Buy/Sell based on RSI
+    rsi = oscillators['Relative Strength Index']
+    stochastic_rsi = oscillators['Stochastic RSI %D']
+
+    if rsi is not None:
+        if rsi < 30 and stochastic_rsi < 0.2:
+            signals.append('Buy')
+        elif rsi > 70 and stochastic_rsi > 0.8:
+            signals.append('Sell')
+        else:
+            signals.append('Hold')
+
+    return signals
+
+
 def main():
     name = 'ADIN'
-    indicators = calc_indicators(get_data_for(name))
-    print(indicators)
+    df = get_data_for(name)
+
+    # Apply filter by timeframe
+    df_filtered = filter_data_by_timeframe(df, 'daily')  # monthly/weekly
+
+    indicators = calc_indicators(df_filtered)
+    signals = generate_signals(indicators['Oscillators'], indicators['Moving averages'])
+
+    print("Indicators:", indicators)
+    print("Generated Signals:", signals)
 
 
 if __name__ == "__main__":
     main()
+
+
