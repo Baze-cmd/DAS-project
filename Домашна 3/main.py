@@ -208,29 +208,60 @@ def get_action(key, value):
 
 
 def main():
-    name = 'ADIN'
-    df = get_data_for(name)
 
-    # Apply filter by timeframe
-    #df_filtered = filter_data_by_timeframe(df, 'daily')  # monthly/weekly
-    df_filtered = filter_data(df, '1 year')
+    stock_name = input("Enter the stock name (or leave blank for all stocks): ").strip()
 
-    indicators = calc_indicators(df_filtered)
-    index = []
-    signals = {}
-    for key, value in indicators["Oscillators"].items():
+    if stock_name == "":
+
+        db_path = os.getcwd()
+        db_path = os.path.join(db_path, 'database.sqlite')
+
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        stock_tables = cursor.fetchall()
+        conn.close()
+
+        for stock in stock_tables:
+            stock_name = stock[0]
+            print(f"\nProcessing data for {stock_name}:")
+            df = get_data_for(stock_name)
+
+
+            df_filtered = filter_data(df, '1 year')
+
+            indicators = calc_indicators(df_filtered)
+            signals = {}
+            for key, value in indicators["Oscillators"].items():
+                signals[key] = get_action(key, value)
+
+            for key, value in indicators["Moving averages"].items():
+                signals[key] = get_action(key, value)
+
+            print("Generated Signals for ", stock_name)
+            print(signals)
+            print("Indicators:", indicators)
+
+    else:
+        df = get_data_for(stock_name)
+
+        df_filtered = filter_data(df, '1 year')
+
+        indicators = calc_indicators(df_filtered)
+        signals = {}
+        for key, value in indicators["Oscillators"].items():
             signals[key] = get_action(key, value)
 
-    for key, value in indicators["Moving averages"].items():
-        signals[key] = get_action(key, value)
+        for key, value in indicators["Moving averages"].items():
+            signals[key] = get_action(key, value)
 
-    print(signals)
-
-    print("Indicators:", indicators)
-    print("Generated Signals:", signals)
+        print(f"\nGenerated Signals for {stock_name}:")
+        print(signals)
+        print("Indicators:", indicators)
 
 
 if __name__ == "__main__":
     main()
+
 
 
