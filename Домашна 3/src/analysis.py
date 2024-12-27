@@ -2,6 +2,8 @@ import pandas as pd
 import ta
 import os
 import sqlite3
+import datetime
+from datetime import datetime, timedelta
 
 
 def get_data_for(name):
@@ -109,37 +111,100 @@ def calc_indicators(data):
 
 
 # Add filter_data_by_timeframe function here
-def filter_data_by_timeframe(df, timeframe):
-    if timeframe == 'daily':
+# def filter_data_by_timeframe(df, timeframe):
+#     if timeframe == 'daily':
+#         return df
+#     elif timeframe == 'weekly':
+#         df['Date'] = pd.to_datetime(df['Date'])
+#         df.set_index('Date', inplace=True)  # Set 'Date' as the index for resampling
+#         return df.resample('W').mean().reset_index()  # Resample weekly
+#     elif timeframe == 'monthly':
+#         df['Date'] = pd.to_datetime(df['Date'])
+#         df.set_index('Date', inplace=True)  # Set 'Date' as the index for resampling
+#         return df.resample('M').mean().reset_index()  # Resample monthly
+#     else:
+#         raise ValueError("Invalid timeframe. Use 'daily', 'weekly', or 'monthly'.")
+
+
+def filter_data(df, timePeriod):
+    possible_time_periods = ['All time', '5 years', '1 year', '1 month', '1 week', '1 day']
+    if timePeriod not in possible_time_periods or timePeriod == 'All time':
         return df
-    elif timeframe == 'weekly':
-        df['Date'] = pd.to_datetime(df['Date'])
-        df.set_index('Date', inplace=True)  # Set 'Date' as the index for resampling
-        return df.resample('W').mean().reset_index()  # Resample weekly
-    elif timeframe == 'monthly':
-        df['Date'] = pd.to_datetime(df['Date'])
-        df.set_index('Date', inplace=True)  # Set 'Date' as the index for resampling
-        return df.resample('M').mean().reset_index()  # Resample monthly
-    else:
-        raise ValueError("Invalid timeframe. Use 'daily', 'weekly', or 'monthly'.")
+
+    df = df.copy()
+    df = df.iloc[::-1].reset_index(drop=True)
+    original_date_format = '%d.%m.%Y'
+    df['Date'] = pd.to_datetime(df['Date'], format=original_date_format)
+    now = datetime.now()
+    cutoff_mapping = {'5 years': timedelta(days=5 * 365), '1 year': timedelta(days=365), '1 month': timedelta(days=30), '1 week': timedelta(weeks=1), '1 day': timedelta(days=1)}
+    date_cutoff = now - cutoff_mapping[timePeriod]
+    filtered_df = df[df['Date'] >= date_cutoff].copy()
+    filtered_df['Date'] = filtered_df['Date'].dt.strftime(original_date_format)
+    return filtered_df
 
 
 # Add generate_signals function here
-def generate_signals(oscillators, moving_averages):
-    signals = []
-    # logic for Buy/Sell based on RSI
-    rsi = oscillators['Relative Strength Index']
-    stochastic_rsi = oscillators['Stochastic RSI %D']
+# def generate_signals(df, moving_averages):
+#     signals = []
+#     # logic for Buy/Sell based on RSI
+#     rsi = df['Relative Strength Index']
+#     stochastic_rsi = df['Stochastic RSI %D']
+#
+#     if rsi is not None:
+#         if rsi < 30 and stochastic_rsi < 0.2:
+#             signals.append('Buy')
+#         elif rsi > 70 and stochastic_rsi > 0.8:
+#             signals.append('Sell')
+#         else:
+#             signals.append('Hold')
+#
+#     return signals
 
-    if rsi is not None:
-        if rsi < 30 and stochastic_rsi < 0.2:
-            signals.append('Buy')
-        elif rsi > 70 and stochastic_rsi > 0.8:
-            signals.append('Sell')
-        else:
-            signals.append('Hold')
+def get_action(key, value):
+    if value is None:
+        return 'Hold'
 
-    return signals
+    if key == 'Relative Strength Index':
+        if value > 70:
+            return 'Sell'
+        elif value < 30:
+            return 'Buy'
+        return 'Hold'
+
+    elif key == 'Stochastic RSI %D':
+        if value > 80:
+            return 'Sell'
+        elif value < 20:
+            return 'Buy'
+        return 'Hold'
+
+    elif key == 'Commodity Channel Index':
+        if value > 100:
+            return 'Sell'
+        elif value < -100:
+            return 'Buy'
+        return 'Hold'
+
+    elif key == 'Trix':
+        if value > 0:
+            return 'Buy'
+        elif value < 0:
+            return 'Sell'
+        return 'Hold'
+
+    elif key == 'Awesome Oscillator':
+        if value > 0:
+            return 'Buy'
+        elif value < 0:
+            return 'Sell'
+        return 'Hold'
+
+    elif key in ['Simple Moving Average', 'Exponential Moving Average',
+                       'Kaufman’s Adaptive Moving Average', 'Weighted Moving Average',
+                       'Ichimoku']:
+        return 'Hold'
+
+    return 'Hold'
 
 
 def main():
@@ -147,10 +212,19 @@ def main():
     df = get_data_for(name)
 
     # Apply filter by timeframe
-    df_filtered = filter_data_by_timeframe(df, 'daily')  # monthly/weekly
+    #df_filtered = filter_data_by_timeframe(df, 'daily')  # monthly/weekly
+    df_filtered = filter_data(df, '1 year')
 
     indicators = calc_indicators(df_filtered)
-    signals = generate_signals(indicators['Oscillators'], indicators['Moving averages'])
+    index = []
+    signals = {}
+    for key, value in indicators["Oscillators"].items():
+            signals[key] = get_action(key, value)
+
+    for key, value in indicators["Moving averages"].items():
+        signals[key] = get_action(key, value)
+
+    print(signals)
 
     print("Indicators:", indicators)
     print("Generated Signals:", signals)

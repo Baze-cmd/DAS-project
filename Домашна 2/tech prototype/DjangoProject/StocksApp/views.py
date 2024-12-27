@@ -75,21 +75,6 @@ def get_stock_data(name):
     return df
 
 
-def filter_data(df, timePeriod):
-    possible_time_periods = ['All time', '5 years', '1 year', '1 month', '1 week', '1 day']
-    if timePeriod not in possible_time_periods or timePeriod == 'All time':
-        return df
-
-    df = df.copy()
-    df = df.iloc[::-1].reset_index(drop=True)
-    original_date_format = '%d.%m.%Y'
-    df['Date'] = pd.to_datetime(df['Date'], format=original_date_format)
-    now = datetime.now()
-    cutoff_mapping = {'5 years': timedelta(days=5 * 365), '1 year': timedelta(days=365), '1 month': timedelta(days=30), '1 week': timedelta(weeks=1), '1 day': timedelta(days=1)}
-    date_cutoff = now - cutoff_mapping[timePeriod]
-    filtered_df = df[df['Date'] >= date_cutoff].copy()
-    filtered_df['Date'] = filtered_df['Date'].dt.strftime(original_date_format)
-    return filtered_df
 
 
 @csrf_exempt
@@ -105,7 +90,7 @@ def stock_data(request, name):
             time_period = json.loads(request.body).get('timePeriod')
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        df = filter_data(df, time_period)
+        df = analysis.filter_data(df, time_period)
         indicators = analysis.calc_indicators(df)
         response_data = {'indicators': indicators}
         return JsonResponse(response_data, status=200)
