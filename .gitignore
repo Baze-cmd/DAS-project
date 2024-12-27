@@ -1,6 +1,8 @@
 #Домашна 1/src/data/
 .idea
+.idea/
 .env
+.venv/
 node_modules
 *.pyc
 __pycache__/
