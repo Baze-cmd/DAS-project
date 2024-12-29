@@ -103,19 +103,3 @@ def lstm_predict(df):
     next_price = scaler.inverse_transform(next_price)
 
     return next_price[0, 0], mse
-
-
-def lstm_result(df):
-    try:
-        lstm_prediction, mse = lstm_predict(df,stock_name)
-        print(f"LSTM Predicted Price for {stock_name}: {lstm_prediction:.2f}")
-        print(f"LSTM Model MSE: {mse:.4f}")
-    except Exception as e:
-        print(f"LSTM prediction failed for {stock_name}: {e}")
-        lstm_prediction = None
-
-    # Combine sentiment with technical analysis
-    if sentiment_action == "Buy" and (lstm_prediction is None or lstm_prediction > df_filtered['Last_trade_price'].iloc[-1]):
-        print(f"Overall recommendation for {stock_name}: Buy (Sentiment + Technical Analysis + LSTM)")
-    else:
-        print(f"Overall recommendation for {stock_name}: Sell (Sentiment + Technical Analysis + LSTM)")

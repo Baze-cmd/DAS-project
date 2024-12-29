@@ -1,10 +1,8 @@
-from src import technical_analysis, sentimental_analysis , LSTM_analysis
+from src import technical_analysis, sentimental_analysis, LSTM_analysis
 import os
 import sqlite3
 import pandas as pd
 import ta
-
-
 
 
 def get_data_for(name):
@@ -42,9 +40,6 @@ def get_table_names(limit=None):
     return [table[0] for table in table_names]
 
 
-
-
-
 def do_analysis(stock_name):
     print(f"Processing data for {stock_name}:")
 
@@ -59,7 +54,19 @@ def do_analysis(stock_name):
     print(f"Sentiment Analysis for {stock_name}: {sentiment_action}")
 
     # LSTM price prediction
-    LSTM_analysis.lstm_result(df,stock_name)
+    try:
+        lstm_prediction, mse = LSTM_analysis.lstm_predict(df)
+        print(f"LSTM Predicted Price for {stock_name}: {lstm_prediction:.2f}")
+        print(f"LSTM Model MSE: {mse:.4f}")
+    except Exception as e:
+        print(f"LSTM prediction failed for {stock_name}: {e}")
+        lstm_prediction = None
+
+    # Combine sentiment with technical analysis
+    if sentiment_action == "Buy" and (lstm_prediction is None or lstm_prediction > df_filtered['Last_trade_price'].iloc[-1]):
+        print(f"Overall recommendation for {stock_name}: Buy (Sentiment + Technical Analysis + LSTM)")
+    else:
+        print(f"Overall recommendation for {stock_name}: Sell (Sentiment + Technical Analysis + LSTM)")
 
 
 def main():
