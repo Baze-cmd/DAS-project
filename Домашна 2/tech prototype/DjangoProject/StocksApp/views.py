@@ -11,7 +11,7 @@ original_sys_path = sys.path.copy()
 sys.path = [path for path in sys.path if 'site-packages' not in path]
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../Домашна 3/src')))
 sys.path.append(os.path.join(os.path.dirname(sys.executable), 'Lib', 'site-packages'))
-import analysis
+import technical_analysis
 
 sys.path = original_sys_path
 
@@ -75,8 +75,6 @@ def get_stock_data(name):
     return df
 
 
-
-
 @csrf_exempt
 def stock_data(request, name):
     df = get_stock_data(name)
@@ -90,7 +88,7 @@ def stock_data(request, name):
             time_period = json.loads(request.body).get('timePeriod')
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        df = analysis.filter_data(df, time_period)
-        indicators = analysis.calc_indicators(df)
+        df = technical_analysis.filter_data(df, time_period)
+        indicators = technical_analysis.calc_indicators(df)
         response_data = {'indicators': indicators}
         return JsonResponse(response_data, status=200)

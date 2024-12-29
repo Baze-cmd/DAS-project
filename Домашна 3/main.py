@@ -1,9 +1,7 @@
+from src import technical_analysis
 import pandas as pd
-import ta
 import os
 import sqlite3
-import datetime
-from datetime import datetime, timedelta
 from newspaper import Article
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
@@ -16,8 +14,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-
-
 
 
 def get_data_for(name):
@@ -37,147 +33,27 @@ def get_data_for(name):
     df['Date'] = pd.to_datetime(df['Date'], dayfirst=True)  # day-first format
     return df
 
-def RSI(df):
-    if len(df) < 14:
-        return None
-    indicator = ta.momentum.RSIIndicator(close=df['Last_trade_price'], fillna=True)
-    return round(indicator.rsi().iloc[-1], 2)
 
-def StochasticRSI(df):
-    if len(df) < 14:
-        return None
-    indicator = ta.momentum.StochRSIIndicator(close=df['Last_trade_price'], fillna=True)
-    return round(indicator.stochrsi_d().iloc[-1], 2)
+def get_table_names(limit=None):
+    db_path = os.getcwd()
+    db_path = os.path.join(db_path, 'database.sqlite')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
 
-def CII(df):
-    if len(df) < 20:
-        return None
-    indicator = ta.trend.CCIIndicator(close=df['Last_trade_price'], high=df['Max'], low=df['Min'], fillna=True)
-    return round(indicator.cci().iloc[-1], 2)
-
-def awesome(df):
-    if len(df) < 34:
-        return None
-    indicator = ta.momentum.AwesomeOscillatorIndicator(high=df['Max'], low=df['Min'], fillna=True)
-    return round(indicator.awesome_oscillator().iloc[-1], 2)
-
-def SMA(df):
-    if len(df) < 4:
-        return None
-    indicator = ta.trend.SMAIndicator(close=df['Last_trade_price'], window=2, fillna=True)
-    return round(indicator.sma_indicator().iloc[-1], 2)
-
-def EMA(df):
-    if len(df) < 14:
-        return None
-    indicator = ta.trend.EMAIndicator(close=df['Last_trade_price'], fillna=True)
-    return round(indicator.ema_indicator().iloc[-1], 2)
-
-def Ichimoku(df):
-    if len(df) < 52:
-        return None
-    indicator = ta.trend.IchimokuIndicator(high=df['Max'], low=df['Min'], fillna=True)
-    return round(indicator.ichimoku_conversion_line().iloc[-1], 2)
-
-def Trix(df):
-    if len(df) < 15:
-        return None
-    indicator = ta.trend.TRIXIndicator(close=df['Last_trade_price'], fillna=True)
-    return round(indicator.trix().iloc[-1], 2)
-
-def KAMA(df):
-    if len(df) < 40:
-        return None
-    indicator = ta.momentum.KAMAIndicator(close=df['Last_trade_price'], fillna=True)
-    return round(indicator.kama().iloc[-1], 2)
-
-def WMA(df):
-    if len(df) < 9:
-        return None
-    indicator = ta.trend.WMAIndicator(close=df['Last_trade_price'], fillna=True)
-    return round(indicator.wma().iloc[-1], 2)
-
-def calc_indicators(data):
-    oscillators = {}
-    moving_averages = {}
-    oscillators['Relative Strength Index'] = RSI(data)
-    oscillators['Stochastic RSI %D'] = StochasticRSI(data)
-    oscillators['Commodity Channel Index'] = CII(data)
-    oscillators['Trix'] = Trix(data)
-    oscillators['Awesome Oscillator'] = awesome(data)
-    moving_averages['Simple Moving Average'] = SMA(data)
-    moving_averages['Exponential Moving Average'] = EMA(data)
-    moving_averages['Ichimoku'] = Ichimoku(data)
-    moving_averages['Kaufman’s Adaptive Moving Average'] = KAMA(data)
-    moving_averages['Weighted Moving Average'] = WMA(data)
-    return {'Oscillators': oscillators, 'Moving averages': moving_averages}
-
-def filter_data(df, timePeriod):
-    possible_time_periods = ['All time', '5 years', '1 year', '1 month', '1 week', '1 day']
-    if timePeriod not in possible_time_periods or timePeriod == 'All time':
-        return df
-
-    df = df.copy()
-    df = df.iloc[::-1].reset_index(drop=True)
-    original_date_format = '%d.%m.%Y'
-    df['Date'] = pd.to_datetime(df['Date'], format=original_date_format)
-    now = datetime.now()
-    cutoff_mapping = {'5 years': timedelta(days=5 * 365), '1 year': timedelta(days=365), '1 month': timedelta(days=30), '1 week': timedelta(weeks=1), '1 day': timedelta(days=1)}
-    date_cutoff = now - cutoff_mapping[timePeriod]
-    filtered_df = df[df['Date'] >= date_cutoff].copy()
-    filtered_df['Date'] = filtered_df['Date'].dt.strftime(original_date_format)
-    return filtered_df
-
-def get_action(key, value):
-    if value is None:
-        return 'Hold'
-
-    if key == 'Relative Strength Index':
-        if value > 70:
-            return 'Sell'
-        elif value < 30:
-            return 'Buy'
-        return 'Hold'
-
-    elif key == 'Stochastic RSI %D':
-        if value > 80:
-            return 'Sell'
-        elif value < 20:
-            return 'Buy'
-        return 'Hold'
-
-    elif key == 'Commodity Channel Index':
-        if value > 100:
-            return 'Sell'
-        elif value < -100:
-            return 'Buy'
-        return 'Hold'
-
-    elif key == 'Trix':
-        if value > 0:
-            return 'Buy'
-        elif value < 0:
-            return 'Sell'
-        return 'Hold'
-
-    elif key == 'Awesome Oscillator':
-        if value > 0:
-            return 'Buy'
-        elif value < 0:
-            return 'Sell'
-        return 'Hold'
-
-    elif key in ['Simple Moving Average', 'Exponential Moving Average',
-                       'Kaufman’s Adaptive Moving Average', 'Weighted Moving Average',
-                       'Ichimoku']:
-        return 'Hold'
-
-    return 'Hold'
-
+    query = "SELECT name FROM sqlite_master WHERE type='table'"
+    if limit is not None:
+        query += f" LIMIT {limit}"
+    try:
+        cursor.execute(query)
+        table_names = cursor.fetchall()
+    finally:
+        cursor.close()
+    return [table[0] for table in table_names]
 
 
 def get_stock_news(stock_name):
-    api_key = "ADD_API_KEY_HERE"
+    # GIT_TODO: remove api key
+    api_key = "Insert_API_KEY_HERE"
     url = f"https://newsapi.org/v2/everything?q={stock_name}&apiKey={api_key}"
 
     response = requests.get(url)
@@ -189,14 +65,17 @@ def get_stock_news(stock_name):
         print(f"Error fetching news for {stock_name}: {data.get('message')}")
         return []
 
+
 def analyze_sentiment_vader(text):
     analyzer = SentimentIntensityAnalyzer()
     sentiment_score = analyzer.polarity_scores(text)
     return sentiment_score['compound']
 
+
 def analyze_sentiment_textblob(text):
     blob = TextBlob(text)
     return blob.sentiment.polarity
+
 
 def analyze_news_for_stock(stock_name):
     articles = get_stock_news(stock_name)
@@ -235,9 +114,7 @@ def analyze_news_for_stock(stock_name):
         return "Sell"
 
 
-
 def prepare_lstm_data(df, feature_col='Last_trade_price', look_back=60):
-
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(df[[feature_col]])
 
@@ -251,6 +128,7 @@ def prepare_lstm_data(df, feature_col='Last_trade_price', look_back=60):
 
     return X, y, scaler
 
+
 def build_lstm_model(input_shape):
     model = Sequential()
     model.add(LSTM(units=50, return_sequences=True, input_shape=input_shape))
@@ -261,118 +139,23 @@ def build_lstm_model(input_shape):
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
 
+
 def train_lstm_model(model, X_train, y_train, X_val, y_val, epochs=50, batch_size=32):
-    history = model.fit(
-        X_train, y_train,
-        validation_data=(X_val, y_val),
-        epochs=epochs,
-        batch_size=batch_size
-    )
+    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=epochs, batch_size=batch_size)
     return history
+
 
 def predict_with_lstm(model, X_test, scaler):
     predictions = model.predict(X_test)
     predictions = scaler.inverse_transform(predictions)
     return predictions
 
+
 def evaluate_model(y_true, y_pred):
     mse = mean_squared_error(y_true, y_pred)
     rmse = np.sqrt(mse)
     print(f"Mean Squared Error: {mse}")
     print(f"Root Mean Squared Error: {rmse}")
-
-
-
-
-
-def main():
-    stock_name = input("Enter the stock name (or leave blank for all stocks): ").strip()
-
-    if stock_name == "":
-        # If no stock is entered, process all stock tables from the database
-        db_path = os.getcwd()
-        db_path = os.path.join(db_path, 'database.sqlite')
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        stock_tables = cursor.fetchall()
-        conn.close()
-
-        for stock in stock_tables:
-            stock_name = stock[0]
-            print(f"\nProcessing data for {stock_name}:")
-
-            # Get technical indicators for the stock
-            df = get_data_for(stock_name)
-            df_filtered = filter_data(df, '1 year')
-            indicators = calc_indicators(df_filtered)
-            signals = {}
-
-            for key, value in indicators["Oscillators"].items():
-                signals[key] = get_action(key, value)
-
-            for key, value in indicators["Moving averages"].items():
-                signals[key] = get_action(key, value)
-
-            # Perform sentiment analysis
-            sentiment_action = analyze_news_for_stock(stock_name)
-            print(f"Sentiment Analysis for {stock_name}: {sentiment_action}")
-
-            # LSTM price prediction
-            try:
-                lstm_prediction, mse = lstm_predict(df)
-                print(f"LSTM Predicted Price for {stock_name}: {lstm_prediction:.2f}")
-                print(f"LSTM Model MSE: {mse:.4f}")
-            except Exception as e:
-                print(f"LSTM prediction failed for {stock_name}: {e}")
-                lstm_prediction = None
-
-            # Combine sentiment with technical analysis
-            if sentiment_action == "Buy" and (lstm_prediction is None or lstm_prediction > df_filtered['Last_trade_price'].iloc[-1]):
-                print(f"Overall recommendation for {stock_name}: Buy (Sentiment + Technical Analysis + LSTM)")
-            else:
-                print(f"Overall recommendation for {stock_name}: Sell (Sentiment + Technical Analysis + LSTM)")
-
-            print("Generated Signals for ", stock_name)
-            print(signals)
-            print("Indicators:", indicators)
-
-    else:
-        # If a stock name is entered, process only that stock
-        df = get_data_for(stock_name)
-        df_filtered = filter_data(df, '1 year')
-        indicators = calc_indicators(df_filtered)
-        signals = {}
-
-        for key, value in indicators["Oscillators"].items():
-            signals[key] = get_action(key, value)
-
-        for key, value in indicators["Moving averages"].items():
-            signals[key] = get_action(key, value)
-
-        # Perform sentiment analysis
-        sentiment_action = analyze_news_for_stock(stock_name)
-        print(f"Sentiment Analysis for {stock_name}: {sentiment_action}")
-
-        # LSTM price prediction
-        try:
-            lstm_prediction, mse = lstm_predict(df)
-            print(f"LSTM Predicted Price for {stock_name}: {lstm_prediction:.2f}")
-            print(f"LSTM Model MSE: {mse:.4f}")
-        except Exception as e:
-            print(f"LSTM prediction failed for {stock_name}: {e}")
-            lstm_prediction = None
-
-        # Combine sentiment with technical analysis
-        if sentiment_action == "Buy" and (lstm_prediction is None or lstm_prediction > df_filtered['Last_trade_price'].iloc[-1]):
-            print(f"Overall recommendation for {stock_name}: Buy (Sentiment + Technical Analysis + LSTM)")
-        else:
-            print(f"Overall recommendation for {stock_name}: Sell (Sentiment + Technical Analysis + LSTM)")
-
-        print(f"\nGenerated Signals for {stock_name}:")
-        print(signals)
-        print("Indicators:", indicators)
 
 
 def lstm_predict(df):
@@ -399,13 +182,7 @@ def lstm_predict(df):
     X_test, y_test = create_sequences(test_data, seq_length)
 
     # Build the LSTM model
-    model = Sequential([
-        LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], 1)),
-        Dropout(0.2),
-        LSTM(50, return_sequences=False),
-        Dropout(0.2),
-        Dense(1)
-    ])
+    model = Sequential([LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], 1)), Dropout(0.2), LSTM(50, return_sequences=False), Dropout(0.2), Dense(1)])
 
     model.compile(optimizer='adam', loss='mean_squared_error')
 
@@ -427,9 +204,46 @@ def lstm_predict(df):
     return next_price[0, 0], mse
 
 
+def do_analysis(stock_name):
+    print(f"Processing data for {stock_name}:")
+
+    # Get technical indicators for the stock
+    df = get_data_for(stock_name)
+    df_filtered = technical_analysis.filter_data(df, '1 year')
+    indicators = technical_analysis.calc_indicators(df_filtered)
+    technical_analysis.print_results(indicators)
+
+    # Perform sentiment analysis
+    sentiment_action = analyze_news_for_stock(stock_name)
+    print(f"Sentiment Analysis for {stock_name}: {sentiment_action}")
+
+    # LSTM price prediction
+    try:
+        lstm_prediction, mse = lstm_predict(df)
+        print(f"LSTM Predicted Price for {stock_name}: {lstm_prediction:.2f}")
+        print(f"LSTM Model MSE: {mse:.4f}")
+    except Exception as e:
+        print(f"LSTM prediction failed for {stock_name}: {e}")
+        lstm_prediction = None
+
+    # Combine sentiment with technical analysis
+    if sentiment_action == "Buy" and (lstm_prediction is None or lstm_prediction > df_filtered['Last_trade_price'].iloc[-1]):
+        print(f"Overall recommendation for {stock_name}: Buy (Sentiment + Technical Analysis + LSTM)")
+    else:
+        print(f"Overall recommendation for {stock_name}: Sell (Sentiment + Technical Analysis + LSTM)")
+
+
+def main():
+    stock_name = input("Enter the stock name (or leave blank for all stocks): ").strip()
+
+    if stock_name == "":
+        names = get_table_names()
+        for stock in names:
+            stock_name = stock
+            do_analysis(stock_name)
+    else:
+        do_analysis(stock_name)
+
+
 if __name__ == "__main__":
     main()
-
-
-
-
