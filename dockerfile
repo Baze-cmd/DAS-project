@@ -37,4 +37,4 @@ WORKDIR /app
 
 EXPOSE 3000 8000
 CMD /opt/venv/bin/python3 "/app/Домашна 2/tech prototype/DjangoProject/manage.py" runserver 0.0.0.0:8000 & \
-    serve -s "/app/Домашна 2/tech prototype/front-end/react-app/build" -l 3000
+    serve -s "/app/Домашна 2/tech prototype/react-app/build" -l 3000
