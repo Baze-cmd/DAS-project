@@ -23,7 +23,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip3 install --upgrade pip setuptools wheel
 RUN pip3 install --default-timeout=100 numpy==2.2.1
-
 RUN pip3 install --default-timeout=100 scipy pandas scikit-learn
 
 COPY requirements.txt .
@@ -32,7 +31,10 @@ RUN pip3 install --default-timeout=100 -r requirements.txt
 COPY . .
 WORKDIR "/app/Домашна 2/tech prototype/front-end/react-app"
 RUN npm install
+RUN npm install -g serve
+RUN npm run build
 WORKDIR /app
 
 EXPOSE 3000 8000
-CMD /opt/venv/bin/python3 "/app/Домашна 2/tech prototype/DjangoProject/manage.py" runserver 0.0.0.0:8000 & npm start --prefix "/app/Домашна 2/tech prototype/front-end/react-app"
+CMD /opt/venv/bin/python3 "/app/Домашна 2/tech prototype/DjangoProject/manage.py" runserver 0.0.0.0:8000 & \
+    serve -s "/app/Домашна 2/tech prototype/front-end/react-app/build" -l 3000
