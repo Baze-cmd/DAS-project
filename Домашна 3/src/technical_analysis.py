@@ -106,7 +106,7 @@ def filter_data(df, timePeriod):
     return filtered_df
 
 
-def get_action(key, value):
+def get_action(key, value, data):
     if value is None:
         return 'Hold'
 
@@ -148,19 +148,25 @@ def get_action(key, value):
     elif key in ['Simple Moving Average', 'Exponential Moving Average',
                        'Kaufman’s Adaptive Moving Average', 'Weighted Moving Average',
                        'Ichimoku']:
+        # Compare the current price with the moving average
+        current_price = data['Last_trade_price'].iloc[-1]  # Assuming data is the DataFrame
+        if current_price > value:
+            return 'Buy'
+        elif current_price < value:
+            return 'Sell'
         return 'Hold'
 
     return 'Hold'
 
 
-def print_results(indicators):
+def print_results(indicators , data):
     result_parts = []
     result_parts.append("Oscillators:")
     for key, value in indicators["Oscillators"].items():
-        result_parts.append(f"{key}: {value} - {get_action(key, value)}")
+        result_parts.append(f"{key}: {value} - {get_action(key, value , data)}")
     result_parts.append("\nMoving averages:")
     for key, value in indicators["Moving averages"].items():
-        result_parts.append(f"{key}: {value} - {get_action(key, value)}")
+        result_parts.append(f"{key}: {value} - {get_action(key, value, data)}")
     for part in result_parts:
         print(part)
 

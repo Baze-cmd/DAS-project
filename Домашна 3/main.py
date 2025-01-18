@@ -47,7 +47,7 @@ def do_analysis(stock_name):
     df = get_data_for(stock_name)
     df_filtered = technical_analysis.filter_data(df, '1 year')
     indicators = technical_analysis.calc_indicators(df_filtered)
-    technical_analysis.print_results(indicators)
+    technical_analysis.print_results(indicators,df_filtered)
 
     # Perform sentiment analysis
     sentiment_action = sentimental_analysis.analyze_news_for_stock(stock_name)

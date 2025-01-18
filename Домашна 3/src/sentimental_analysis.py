@@ -6,7 +6,7 @@ import requests
 
 
 def get_stock_news(stock_name):
-    api_key = "Insert_API_KEY"
+    api_key = "157a774cc5d648588081e2a151e3d112"
     url = f"https://newsapi.org/v2/everything?q={stock_name}&apiKey={api_key}"
 
     response = requests.get(url)
