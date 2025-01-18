@@ -29,7 +29,7 @@ COPY requirements.txt .
 RUN pip3 install --default-timeout=100 -r requirements.txt
 
 COPY . .
-WORKDIR "/app/Домашна 2/tech prototype/front-end/react-app"
+WORKDIR "/app/Домашна 2/tech prototype/react-app"
 RUN npm install
 RUN npm install -g serve
 RUN npm run build
